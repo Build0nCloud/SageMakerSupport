@@ -1,0 +1,26 @@
+import json
+import boto3
+from datetime import datetime, timezone, timedelta
+
+SMClient = boto3.client('sagemaker')
+
+def lambda_handler(event, context):
+    
+    endpoints = SMClient.list_endpoints(StatusEquals='InService')
+    NBinstances = SMClient.list_notebook_instances()
+    for x in endpoints["Endpoints"] :
+
+        
+        timenow = datetime.now(timezone.utc)
+        grace_period = x["CreationTime"] + timedelta(hours=2)
+        dd=timenow-grace_period
+
+        if ( timenow - x["CreationTime"] > timedelta(hours=2)) :
+            print("SHUTDOWN", x["EndpointName"], " uptime", dd)
+            response = SMClient.delete_endpoint(EndpointName = x["EndpointName"])
+        else :
+            print("NOT shutting down", x["EndpointName"])
+    return {
+        'statusCode': 200,
+        'body': json.dumps('SageMaker Check successful')
+    }
